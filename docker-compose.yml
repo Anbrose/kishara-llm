@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  kishara-llm-api:
+    build:
+      context: .
+      dockerfile: script/Dockerfile
+    container_name: kishara-llm-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./server:/app/server
+    working_dir: /app/server
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RELOAD=true
+      - LOG_LEVEL=info
