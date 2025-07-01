@@ -1,29 +1,25 @@
-# syntax=docker/dockerfile:1
-FROM python:3.11-slim
+FROM registry.dev.facere.ai/python-ml-base:latest
 
-# System deps
-RUN apt-get update && apt-get install -y curl build-essential && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry
-ENV POETRY_VERSION=1.7.1
-RUN curl -sSL https://install.python-poetry.org | python3 - && \
-    ln -s /root/.local/bin/poetry /usr/local/bin/poetry
-
-# Set workdir
 WORKDIR /app
+#RUN apt-get install python3.10-venv -y
+# Copy relevant files
+COPY pyproject.toml poetry.lock ./
+# Install requirements, we share mount the poetry cache directory to speed up installation.
+RUN --mount=type=cache,target=/root/.cache/pypoetry,sharing=locked \
+    poetry install --no-interaction --no-ansi --no-root
 
-# Copy pyproject.toml and poetry.lock
-COPY ../server/pyproject.toml ./server/pyproject.toml
-COPY ../server/poetry.lock ./server/poetry.lock
+#Install tesseract
+#RUN apt-get update && apt-get install -y tesseract-ocr
+#RUN rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN cd server && poetry install --no-root --only main
+COPY ./server /app/server
+#COPY ./tests /app/tests
+#COPY ./training /app/training
 
-# Copy app code
-COPY ../server ./server
+ENV PYTHONPATH=/app
+ENV PYTHONBUFFERED=1
 
-# Expose port
 EXPOSE 8000
 
-# Entrypoint
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 
+## TODO: uvicorn vs gunicorn or other?
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000", "--ws-max-size", "1048576000"]
